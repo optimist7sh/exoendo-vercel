@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>발열·흡열 반응 — 손난로 · 손냉장고 만들기</title>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{
+    --navy:#1b2a4a; --navy-2:#26375c; --ink:#1f2937; --muted:#64748b;
+    --gold:#c8a24a; --gold-soft:#efe2bd;
+    --hot:#e8590c; --hot-soft:#ffe0cc; --cold:#2f87d8; --cold-soft:#d6ecff;
+    --bg:#f5f6fa; --card:#fff; --line:#e5e8ef; --good:#157347; --warn:#e8590c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:"Pretendard","Malgun Gothic",-apple-system,"Apple SD Gothic Neo",sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.55;padding:16px}
+  .wrap{max-width:980px;margin:0 auto}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;border-radius:16px;
+    padding:18px 22px;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(27,42,74,.16)}
+  header::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;
+    background:radial-gradient(circle,rgba(200,162,74,.35),transparent 70%)}
+  .eyebrow{font-size:.74rem;letter-spacing:.13em;color:var(--gold-soft);font-weight:700}
+  header h1{font-size:1.4rem;font-weight:800;margin:3px 0 4px;letter-spacing:-.02em}
+  header p{font-size:.88rem;color:#cdd6e8}
+  .std{display:inline-block;margin-top:9px;background:rgba(255,255,255,.12);border:1px solid rgba(231,214,168,.4);
+    padding:5px 12px;border-radius:999px;font-size:.78rem;color:var(--gold-soft);font-weight:600}
+
+  .tabs{display:flex;gap:8px;margin:14px 0}
+  .tab{flex:1;text-align:center;padding:13px;border-radius:12px;background:#e9ecf3;color:var(--navy);
+    font-weight:800;font-size:1rem;cursor:pointer;border:2px solid transparent}
+  .tab.on.warm{background:var(--hot);color:#fff} .tab.on.cool{background:var(--cold);color:#fff}
+
+  .grid{display:grid;grid-template-columns:1fr 340px;gap:14px}
+  @media(max-width:780px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;
+    box-shadow:0 3px 10px rgba(31,41,55,.04)}
+  svg{width:100%;height:auto;display:block}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px) rotate(-2deg)}75%{transform:translateX(5px) rotate(2deg)}}
+  .shaking{animation:shake .3s ease-in-out infinite}
+
+  .ing{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .ing button{display:flex;align-items:center;gap:8px;justify-content:flex-start;
+    background:#f4f6fa;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-weight:700;font-size:.9rem;color:var(--navy);cursor:pointer}
+  .ing button .dot{width:14px;height:14px;border-radius:50%;border:1px solid #cbd5e1;flex:none}
+  .ing button.added{background:#eaf7ef;border-color:#bfe6cd;color:var(--good)}
+  .ing button.added::after{content:"✓";margin-left:auto;font-weight:800}
+
+  button{font-family:inherit}
+  .predict{margin:10px 0;display:none}
+  .predict.show{display:block}
+  .predict p{font-weight:700;font-size:.9rem;margin-bottom:8px}
+  .predict .pb{display:flex;gap:8px}
+  .predict .pb button{flex:1;padding:11px;border-radius:10px;font-weight:800;border:2px solid var(--line);background:#fff;cursor:pointer}
+  .predict .pb button.up.sel{background:var(--hot);color:#fff;border-color:transparent}
+  .predict .pb button.down.sel{background:var(--cold);color:#fff;border-color:transparent}
+
+  .acts{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+  .b-go{flex:1;background:var(--navy);color:#fff;border:0;border-radius:11px;padding:13px;font-weight:800;font-size:.98rem;cursor:pointer;box-shadow:0 4px 12px rgba(27,42,74,.22)}
+  .b-go:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+  .b-reset{background:#fff;color:var(--muted);border:1.5px solid var(--line);border-radius:11px;padding:13px 16px;font-weight:700;cursor:pointer}
+
+  .coach{border-radius:12px;padding:13px;background:#f0f5ff;border:1px solid #cdddff;margin-bottom:12px}
+  .coach .msg{font-size:.92rem;font-weight:600}
+  .coach.good{background:#eaf7ef;border-color:#bfe6cd} .coach.good .msg{color:var(--good)}
+  .coach.warn{background:#fff2e8;border-color:#ffd8bf} .coach.warn .msg{color:var(--warn)}
+
+  .result{display:none;border-radius:12px;padding:15px;color:#fff;margin-top:6px}
+  .result.show{display:block}
+  .result.warm{background:linear-gradient(135deg,#e8590c,#f4801f)}
+  .result.cool{background:linear-gradient(135deg,#2f87d8,#4aa3ec)}
+  .result h3{font-size:1.05rem;margin-bottom:5px}
+  .result .eq{font-family:"Pretendard";background:rgba(255,255,255,.16);border-radius:8px;padding:8px 10px;font-size:.92rem;font-weight:700;margin:8px 0;text-align:center}
+  .result p{font-size:.88rem;opacity:.96}
+  .result .q{margin-top:10px;background:rgba(255,255,255,.14);border-radius:8px;padding:9px;font-size:.84rem}
+  .safety{font-size:.77rem;color:var(--muted);margin-top:12px;background:#fffdf5;border:1px dashed var(--gold);border-radius:10px;padding:9px 12px}
+  footer{text-align:center;color:var(--muted);font-size:.78rem;margin:18px 0 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">1학년 2반 · 화학 반응과 에너지</div>
+    <h1>손난로 · 손냉장고 만들기</h1>
+    <p>재료를 넣고 흔들어 보자. 화학 반응이 일어날 때 <b>에너지는 어디로</b> 갈까?</p>
+    <span class="std">화학 반응이 일어날 때 에너지가 출입함을 설명하기 (2022 개정)</span>
+  </header>
+
+  <div class="tabs">
+    <div class="tab on warm" data-dev="warmer">🔥 손난로 (발열)</div>
+    <div class="tab cool" data-dev="cooler">❄️ 손냉장고 (흡열)</div>
+  </div>
+
+  <div class="grid">
+    <!-- 장치 -->
+    <div class="panel">
+      <svg id="scene" viewBox="0 0 400 380" role="img" aria-label="반응 장치와 온도계">
+        <!-- 오라(주변 온도) -->
+        <ellipse id="aura" cx="250" cy="195" rx="120" ry="120" fill="var(--hot-soft)" opacity="0"/>
+
+        <!-- 온도계 -->
+        <g id="thermo">
+          <rect x="50" y="86" width="22" height="208" rx="11" fill="#eef2f7" stroke="#c7d0dd" stroke-width="2"/>
+          <circle cx="61" cy="306" r="20" fill="#eef2f7" stroke="#c7d0dd" stroke-width="2"/>
+          <clipPath id="thClip"><rect x="52" y="88" width="18" height="206" rx="9"/><circle cx="61" cy="306" r="18"/></clipPath>
+          <rect id="merc" x="52" y="150" width="18" height="160" fill="var(--hot)" clip-path="url(#thClip)"/>
+          <circle cx="61" cy="306" r="18" fill="var(--hot)"/>
+          <!-- 눈금 -->
+          <g font-size="9" fill="#94a3b8" font-weight="700">
+            <line x1="72" y1="100" x2="78" y2="100" stroke="#c7d0dd"/><text x="81" y="103">60</text>
+            <line x1="72" y1="148" x2="78" y2="148" stroke="#c7d0dd"/><text x="81" y="151">40</text>
+            <line x1="72" y1="196" x2="78" y2="196" stroke="#c7d0dd"/><text x="81" y="199">20</text>
+            <line x1="72" y1="244" x2="78" y2="244" stroke="#c7d0dd"/><text x="81" y="247">0</text>
+          </g>
+          <text id="tempTxt" x="61" y="350" text-anchor="middle" font-size="17" font-weight="800" fill="var(--navy)">22℃</text>
+        </g>
+
+        <!-- 주머니 -->
+        <g id="bag">
+          <rect x="170" y="92" width="120" height="14" rx="4" fill="#cfd8e4"/>
+          <rect x="178" y="96" width="104" height="5" rx="2" fill="#9aa3b2"/>
+          <path d="M172,106 L288,106 L280,300 L180,300 Z" fill="#eaf1fb" stroke="#b9cbe4" stroke-width="2.5"/>
+          <clipPath id="bagClip"><path d="M172,106 L288,106 L280,300 L180,300 Z"/></clipPath>
+          <!-- 내용물(물) -->
+          <rect id="bagWater" x="172" y="300" width="116" height="0" fill="#bcdcf6" clip-path="url(#bagClip)" opacity="0.85"/>
+          <!-- 재료 입자 -->
+          <g id="particles" clip-path="url(#bagClip)"></g>
+          <text id="bagLabel" x="230" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa3b2">재료를 넣으세요</text>
+        </g>
+
+        <!-- 에너지 화살표 -->
+        <g id="arrows" opacity="0">
+          <g id="arrowOut">
+            <path d="M300,150 L340,130" stroke="var(--hot)" stroke-width="4" marker-end="url(#ah)"/>
+            <path d="M306,200 L348,200" stroke="var(--hot)" stroke-width="4" marker-end="url(#ah)"/>
+            <path d="M300,250 L340,272" stroke="var(--hot)" stroke-width="4" marker-end="url(#ah)"/>
+          </g>
+          <g id="arrowIn">
+            <path d="M348,135 L306,158" stroke="var(--cold)" stroke-width="4" marker-end="url(#ac)"/>
+            <path d="M352,200 L308,200" stroke="var(--cold)" stroke-width="4" marker-end="url(#ac)"/>
+            <path d="M348,265 L306,242" stroke="var(--cold)" stroke-width="4" marker-end="url(#ac)"/>
+          </g>
+          <text id="arrowLbl" x="325" y="120" text-anchor="middle" font-size="12" font-weight="800" fill="var(--hot)">에너지 방출</text>
+        </g>
+        <defs>
+          <marker id="ah" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="var(--hot)"/></marker>
+          <marker id="ac" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="var(--cold)"/></marker>
+        </defs>
+
+        <!-- 손 느낌 -->
+        <text id="handIcon" x="230" y="345" text-anchor="middle" font-size="26" opacity="0">🤚</text>
+      </svg>
+    </div>
+
+    <!-- 조작 패널 -->
+    <div class="panel">
+      <div class="coach" id="coach"><div class="msg" id="coachMsg">재료를 모두 넣고 주머니를 흔들어 보세요.</div></div>
+
+      <div class="ing" id="ingBox"></div>
+
+      <div class="predict" id="predictBox">
+        <p>🔮 흔들면 온도가 어떻게 될까요?</p>
+        <div class="pb">
+          <button class="up" id="predUp">🔼 올라간다</button>
+          <button class="down" id="predDown">🔽 내려간다</button>
+        </div>
+      </div>
+
+      <div class="acts">
+        <button class="b-go" id="btnGo" disabled>주머니 흔들기</button>
+        <button class="b-reset" id="btnReset">↺ 다시</button>
+      </div>
+
+      <div class="result" id="result">
+        <h3 id="resTitle"></h3>
+        <div class="eq" id="resEq"></div>
+        <p id="resDesc"></p>
+        <div class="q" id="resQ"></div>
+      </div>
+
+      <div class="safety" id="safety"></div>
+    </div>
+  </div>
+  <footer>발열·흡열 반응 시뮬레이션 v1.0 · 손난로(발열)/손냉장고(흡열) · 에너지 출입 방향 학습용</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const DEVICES={
+  warmer:{
+    cls:"warm", icon:"🔥",
+    ingredients:[{n:"철 가루",c:"#6b7280"},{n:"숯가루",c:"#1f2937"},{n:"소금",c:"#e5e7eb"},{n:"질석",c:"#b08968"},{n:"물",c:"#7fb8e6"}],
+    startTemp:22, endTemp:55, mercColor:"var(--hot)", auraColor:"var(--hot-soft)",
+    dir:"out", label:"에너지 방출", labelColor:"var(--hot)",
+    eq:"4Fe + 3O₂ → 2Fe₂O₃ (+ 에너지)",
+    title:"🔥 발열 반응!", hand:"🔥",
+    desc:"철이 산소와 반응(산화)하며 <b>에너지를 방출</b>합니다. 방출된 에너지가 주변으로 나가 <b>주변(손) 온도가 올라가</b> 따뜻해집니다.",
+    q:"🤔 손난로를 흔들면 왜 더 빨리 따뜻해질까? (산소와 닿는 면적이 늘어나기 때문)",
+    safety:"⚠️ 실제 손난로는 발열로 <b>저온 화상</b>이 생길 수 있어요. 맨살에 오래 붙이지 마세요.",
+    correct:"up"
+  },
+  cooler:{
+    cls:"cool", icon:"❄️",
+    ingredients:[{n:"물",c:"#7fb8e6"},{n:"질산 암모늄",c:"#ffffff"}],
+    startTemp:22, endTemp:1, mercColor:"var(--cold)", auraColor:"var(--cold-soft)",
+    dir:"in", label:"에너지 흡수", labelColor:"var(--cold)",
+    eq:"NH₄NO₃ → NH₄⁺ + NO₃⁻ (에너지 흡수)",
+    title:"❄️ 흡열 반응!", hand:"❄️",
+    desc:"질산 암모늄이 물에 녹으며 <b>에너지를 흡수</b>합니다. 주변에서 에너지를 빼앗아가 <b>주변(손) 온도가 내려가</b> 차가워집니다.",
+    q:"🤔 시중의 휴대용 냉각팩도 같은 원리예요. 또 어떤 흡열 사례가 있을까? (물의 증발 등)",
+    safety:"⚠️ 질산 암모늄은 <b>눈·피부에 닿지 않게</b> 주의하고, 실험 후 지정된 곳에 처리하세요.",
+    correct:"down"
+  }
+};
+
+let dev="warmer", added=new Set(), prediction=null, state="empty", raf=null;
+
+/* 온도→y (눈금 60→y100, 20→y196 기준; 80도 범위 / 0.96px·도... 직접 보간) */
+function thermoY(t){ // 60℃=100, 0℃=244  → 2.4px/도
+  return 244 - t*2.4;
+}
+
+function buildIngredients(){
+  const box=$("ingBox"); box.innerHTML="";
+  DEVICES[dev].ingredients.forEach((ing,i)=>{
+    const b=document.createElement("button");
+    b.innerHTML=`<span class="dot" style="background:${ing.c}"></span>${ing.n}`;
+    b.onclick=()=>addIngredient(i,b,ing);
+    box.appendChild(b);
+  });
+}
+function addIngredient(i,btn,ing){
+  if(state!=="empty"&&state!=="adding")return;
+  if(added.has(i))return;
+  added.add(i); state="adding"; btn.classList.add("added");
+  $("bagLabel").setAttribute("opacity",0);
+  // 입자/물 표시
+  if(ing.n==="물"){ animBagWater(); }
+  else addParticles(ing.c);
+  if(added.size===DEVICES[dev].ingredients.length){
+    state="ready";
+    $("predictBox").classList.add("show");
+    coach("재료를 다 넣었어요! 먼저 <b>온도 변화를 예측</b>한 뒤 흔들어 보세요.","");
+  }else{
+    coach(`재료를 넣는 중… (${added.size}/${DEVICES[dev].ingredients.length})`,"");
+  }
+}
+function addParticles(color){
+  const g=$("particles");
+  for(let k=0;k<14;k++){
+    const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("cx",185+Math.random()*90);
+    c.setAttribute("cy",150+Math.random()*140);
+    c.setAttribute("r",2+Math.random()*2.5);
+    c.setAttribute("fill",color); c.setAttribute("opacity",0.9);
+    if(color==="#ffffff")c.setAttribute("stroke","#cbd5e1");
+    g.appendChild(c);
+  }
+}
+function animBagWater(){
+  const w=$("bagWater"); const targetH=120, top=300-targetH;
+  const start=performance.now();
+  (function st(now){ const k=Math.min((now-start)/700,1);
+    w.setAttribute("height",(targetH*k).toFixed(1)); w.setAttribute("y",(300-targetH*k).toFixed(1));
+    if(k<1)requestAnimationFrame(st);
+  })(performance.now());
+}
+
+function coach(msg,tone){ const c=$("coach"); c.className="coach"+(tone?" "+tone:""); $("coachMsg").innerHTML=msg; }
+
+function setPrediction(p){
+  if(state!=="ready"&&state!=="predicted")return;
+  prediction=p; state="predicted";
+  $("predUp").classList.toggle("sel",p==="up");
+  $("predDown").classList.toggle("sel",p==="down");
+  $("btnGo").disabled=false;
+  coach("예측 완료! 이제 <b>주머니 흔들기</b>를 눌러 확인하세요.","good");
+}
+
+function react(){
+  if(state!=="predicted"){ if(state==="ready"){coach("먼저 온도 변화를 예측해 주세요.","warn");} return; }
+  state="reacting"; $("btnGo").disabled=true;
+  const D=DEVICES[dev];
+  $("bag").classList.add("shaking");
+  // 화살표/오라 설정
+  $("merc").setAttribute("fill",D.mercColor);
+  document.querySelector("#thermo circle:last-of-type")?.setAttribute("fill",D.mercColor);
+  $("aura").setAttribute("fill",D.auraColor);
+  $("arrowOut").style.display = D.dir==="out"?"":"none";
+  $("arrowIn").style.display  = D.dir==="in"?"":"none";
+  $("arrowLbl").textContent=D.label; $("arrowLbl").setAttribute("fill",D.labelColor);
+  $("handIcon").textContent=D.hand;
+
+  const start=performance.now(), dur=2800;
+  function step(now){
+    const k=Math.min((now-start)/dur,1);
+    const t=D.startTemp+(D.endTemp-D.startTemp)*k;
+    const y=thermoY(t);
+    $("merc").setAttribute("y",y); $("merc").setAttribute("height",(306-y));
+    // 마지막 bulb 원 색
+    const bulb=$("thermo").querySelectorAll("circle")[ $("thermo").querySelectorAll("circle").length-1 ];
+    bulb.setAttribute("fill",D.mercColor);
+    $("tempTxt").textContent=Math.round(t)+"℃";
+    $("tempTxt").setAttribute("fill", D.dir==="out"?"var(--hot)":"var(--cold)");
+    $("aura").setAttribute("opacity",(0.55*k).toFixed(2));
+    $("arrows").setAttribute("opacity",(Math.min(k*1.5,1)).toFixed(2));
+    $("handIcon").setAttribute("opacity",k.toFixed(2));
+    if(k<1)raf=requestAnimationFrame(step);
+    else finish();
+  }
+  raf=requestAnimationFrame(step);
+}
+function finish(){
+  state="done"; $("bag").classList.remove("shaking");
+  const D=DEVICES[dev];
+  const r=$("result"); r.className="result show "+D.cls;
+  $("resTitle").textContent=D.title;
+  $("resEq").textContent=D.eq;
+  $("resDesc").innerHTML=D.desc;
+  $("resQ").innerHTML=D.q;
+  const ok = prediction===D.correct;
+  coach(ok? "예측이 맞았어요! 👏 에너지의 출입 방향을 확인해 보세요."
+          : "예측과 달랐네요. 결과를 보고 에너지가 어디로 갔는지 다시 생각해 봐요.", ok?"good":"warn");
+}
+
+function reset(){
+  if(raf){cancelAnimationFrame(raf);raf=null;}
+  added=new Set(); prediction=null; state="empty";
+  const D=DEVICES[dev];
+  $("particles").innerHTML=""; $("bagWater").setAttribute("height",0);
+  $("bagLabel").setAttribute("opacity",1);
+  $("bag").classList.remove("shaking");
+  $("arrows").setAttribute("opacity",0); $("aura").setAttribute("opacity",0);
+  $("handIcon").setAttribute("opacity",0);
+  $("merc").setAttribute("fill","#9aa3b2");
+  $("thermo").querySelectorAll("circle").forEach((c,i,arr)=>{ if(i===arr.length-1)c.setAttribute("fill","#9aa3b2"); });
+  const y=thermoY(22); $("merc").setAttribute("y",y); $("merc").setAttribute("height",306-y);
+  $("tempTxt").textContent="22℃"; $("tempTxt").setAttribute("fill","var(--navy)");
+  $("predictBox").classList.remove("show"); $("predUp").classList.remove("sel"); $("predDown").classList.remove("sel");
+  $("result").className="result"; $("btnGo").disabled=true;
+  $("safety").innerHTML=D.safety;
+  buildIngredients();
+  coach("재료를 모두 넣고 주머니를 흔들어 보세요.","");
+}
+
+/* 탭 */
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on","warm","cool"));
+    t.classList.add("on", t.dataset.dev==="warmer"?"warm":"cool");
+    dev=t.dataset.dev; reset();
+  };
+});
+$("predUp").onclick=()=>setPrediction("up");
+$("predDown").onclick=()=>setPrediction("down");
+$("btnGo").onclick=react;
+$("btnReset").onclick=reset;
+
+reset();
+</script>
+</body>
+</html>
