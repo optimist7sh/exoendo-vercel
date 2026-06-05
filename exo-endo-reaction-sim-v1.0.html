@@ -35,6 +35,15 @@
   .namebar input:focus{outline:none;border-color:var(--gold);background:#fff}
   .namebar .who{font-size:.82rem;font-weight:700;color:var(--muted);flex:none}
 
+  .ing button[draggable=true]{cursor:grab}
+  .ing button.dragging{opacity:.45;cursor:grabbing}
+  .ing button.added{cursor:default}
+  #scene{border-radius:12px;transition:outline-color .1s}
+  #scene.drop-hot{outline:3px dashed var(--gold);outline-offset:-6px;background:rgba(200,162,74,.06)}
+  #bag{cursor:pointer}
+  #bag.clickable .bag-hint{opacity:.9}
+  .bag-hint{opacity:0;transition:opacity .2s}
+
   .tabs{display:flex;gap:8px;margin:14px 0}
   .tab{flex:1;text-align:center;padding:13px;border-radius:12px;background:#e9ecf3;color:var(--navy);
     font-weight:800;font-size:1rem;cursor:pointer;border:2px solid transparent}
@@ -141,7 +150,8 @@
           <rect id="bagWater" x="172" y="300" width="116" height="0" fill="#bcdcf6" clip-path="url(#bagClip)" opacity="0.85"/>
           <!-- 재료 입자 -->
           <g id="particles" clip-path="url(#bagClip)"></g>
-          <text id="bagLabel" x="230" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa3b2">재료를 넣으세요</text>
+          <text id="bagLabel" x="230" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa3b2">여기로 재료를 드래그</text>
+          <text id="bagHint" class="bag-hint" x="230" y="285" text-anchor="middle" font-size="11" font-weight="800" fill="var(--navy)">👆 주머니를 클릭해 흔들기</text>
         </g>
 
         <!-- 에너지 화살표 -->
@@ -229,7 +239,7 @@ const DEVICES={
   }
 };
 
-let dev="warmer", added=new Set(), prediction=null, state="empty", raf=null;
+let dev="warmer", added=new Set(), prediction=null, state="empty", raf=null, ingBtns=[];
 
 /* 온도→y (눈금 60→y100, 20→y196 기준; 80도 범위 / 0.96px·도... 직접 보간) */
 function thermoY(t){ // 60℃=100, 0℃=244  → 2.4px/도
@@ -237,11 +247,21 @@ function thermoY(t){ // 60℃=100, 0℃=244  → 2.4px/도
 }
 
 function buildIngredients(){
-  const box=$("ingBox"); box.innerHTML="";
+  const box=$("ingBox"); box.innerHTML=""; ingBtns=[];
   DEVICES[dev].ingredients.forEach((ing,i)=>{
     const b=document.createElement("button");
     b.innerHTML=`<span class="dot" style="background:${ing.c}"></span>${ing.n}`;
     b.onclick=()=>addIngredient(i,b,ing);
+    // 드래그해서 주머니에 넣기
+    b.setAttribute("draggable","true");
+    b.addEventListener("dragstart",e=>{
+      if(b.classList.contains("added")||(state!=="empty"&&state!=="adding")){ e.preventDefault(); return; }
+      e.dataTransfer.setData("text/plain",String(i));
+      e.dataTransfer.effectAllowed="copy";
+      b.classList.add("dragging");
+    });
+    b.addEventListener("dragend",()=>b.classList.remove("dragging"));
+    ingBtns[i]=b;
     box.appendChild(b);
   });
 }
@@ -256,7 +276,7 @@ function addIngredient(i,btn,ing){
   if(added.size===DEVICES[dev].ingredients.length){
     state="ready";
     $("predictBox").classList.add("show");
-    coach("재료를 다 넣었어요! 먼저 <b>온도 변화를 예측</b>한 뒤 흔들어 보세요.","");
+    coach("재료를 다 넣었어요! 먼저 <b>온도 변화를 예측</b>한 뒤 <b>주머니를 클릭</b>해 흔들어요.","");
   }else{
     coach(`재료를 넣는 중… (${added.size}/${DEVICES[dev].ingredients.length})`,"");
   }
@@ -290,13 +310,15 @@ function setPrediction(p){
   $("predUp").classList.toggle("sel",p==="up");
   $("predDown").classList.toggle("sel",p==="down");
   $("btnGo").disabled=false;
-  coach("예측 완료! 이제 <b>주머니 흔들기</b>를 눌러 확인하세요.","good");
+  $("bag").classList.add("clickable");
+  coach("예측 완료! 이제 <b>주머니를 클릭</b>해 흔들어 확인하세요.","good");
 }
 
 function react(){
   if(state!=="predicted"){ if(state==="ready"){coach("먼저 온도 변화를 예측해 주세요.","warn");} return; }
   state="reacting"; $("btnGo").disabled=true;
   const D=DEVICES[dev];
+  $("bag").classList.remove("clickable");
   $("bag").classList.add("shaking");
   // 화살표/오라 설정
   $("merc").setAttribute("fill",D.mercColor);
@@ -345,7 +367,7 @@ function reset(){
   const D=DEVICES[dev];
   $("particles").innerHTML=""; $("bagWater").setAttribute("height",0);
   $("bagLabel").setAttribute("opacity",1);
-  $("bag").classList.remove("shaking");
+  $("bag").classList.remove("shaking","clickable");
   $("arrows").setAttribute("opacity",0); $("aura").setAttribute("opacity",0);
   $("handIcon").setAttribute("opacity",0);
   $("merc").setAttribute("fill","#9aa3b2");
@@ -356,7 +378,7 @@ function reset(){
   $("result").className="result"; $("btnGo").disabled=true;
   $("safety").innerHTML=D.safety;
   buildIngredients();
-  coach("재료를 모두 넣고 주머니를 흔들어 보세요.","");
+  coach("재료를 <b>주머니로 드래그</b>해 넣어 보세요.","");
 }
 
 /* 탭 */
@@ -371,6 +393,29 @@ $("predUp").onclick=()=>setPrediction("up");
 $("predDown").onclick=()=>setPrediction("down");
 $("btnGo").onclick=react;
 $("btnReset").onclick=reset;
+
+/* 재료 드래그 → 주머니에 넣기 (드롭존 = 장면 전체) */
+(function setupDropZone(){
+  const scene=$("scene");
+  scene.addEventListener("dragover",e=>{
+    if(state!=="empty"&&state!=="adding")return;
+    e.preventDefault(); e.dataTransfer.dropEffect="copy"; scene.classList.add("drop-hot");
+  });
+  scene.addEventListener("dragleave",e=>{ if(e.target===scene)scene.classList.remove("drop-hot"); });
+  scene.addEventListener("drop",e=>{
+    e.preventDefault(); scene.classList.remove("drop-hot");
+    const i=parseInt(e.dataTransfer.getData("text/plain"),10);
+    const ing=DEVICES[dev].ingredients[i], btn=ingBtns[i];
+    if(!isNaN(i)&&ing&&btn) addIngredient(i,btn,ing);
+  });
+})();
+
+/* 주머니 클릭 → 흔들기(반응) */
+$("bag").addEventListener("click",()=>{
+  if(state==="predicted") react();
+  else if(state==="ready") coach("먼저 온도 변화를 예측해 주세요.","warn");
+  else if(state==="empty"||state==="adding") coach("재료를 모두 넣은 뒤 흔들 수 있어요.","");
+});
 
 /* 이름 입력 — 저장/복원 */
 function renderWho(){
