@@ -27,6 +27,14 @@
   .std{display:inline-block;margin-top:9px;background:rgba(255,255,255,.12);border:1px solid rgba(231,214,168,.4);
     padding:5px 12px;border-radius:999px;font-size:.78rem;color:var(--gold-soft);font-weight:600}
 
+  .namebar{display:flex;align-items:center;gap:10px;margin:12px 0 0;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:0 3px 10px rgba(31,41,55,.04)}
+  .namebar label{font-weight:800;font-size:.9rem;color:var(--navy);flex:none}
+  .namebar input{flex:1;min-width:0;font-family:inherit;font-size:.95rem;font-weight:600;color:var(--ink);
+    background:#f4f6fa;border:1.5px solid var(--line);border-radius:9px;padding:9px 12px}
+  .namebar input:focus{outline:none;border-color:var(--gold);background:#fff}
+  .namebar .who{font-size:.82rem;font-weight:700;color:var(--muted);flex:none}
+
   .tabs{display:flex;gap:8px;margin:14px 0}
   .tab{flex:1;text-align:center;padding:13px;border-radius:12px;background:#e9ecf3;color:var(--navy);
     font-weight:800;font-size:1rem;cursor:pointer;border:2px solid transparent}
@@ -82,11 +90,17 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">1학년 2반 · 화학 반응과 에너지</div>
+    <div class="eyebrow">3학년 2반 · 화학 반응과 에너지</div>
     <h1>손난로 · 손냉장고 만들기</h1>
     <p>재료를 넣고 흔들어 보자. 화학 반응이 일어날 때 <b>에너지는 어디로</b> 갈까?</p>
     <span class="std">화학 반응이 일어날 때 에너지가 출입함을 설명하기 (2022 개정)</span>
   </header>
+
+  <div class="namebar">
+    <label for="nameInput">이름</label>
+    <input id="nameInput" type="text" maxlength="20" placeholder="이름을 입력하세요 (예: 3-2 홍길동)" autocomplete="off">
+    <span class="who" id="whoTxt"></span>
+  </div>
 
   <div class="tabs">
     <div class="tab on warm" data-dev="warmer">🔥 손난로 (발열)</div>
@@ -357,6 +371,20 @@ $("predUp").onclick=()=>setPrediction("up");
 $("predDown").onclick=()=>setPrediction("down");
 $("btnGo").onclick=react;
 $("btnReset").onclick=reset;
+
+/* 이름 입력 — 저장/복원 */
+function renderWho(){
+  const n=$("nameInput").value.trim();
+  $("whoTxt").textContent = n ? "👤 "+n : "";
+}
+(function initName(){
+  let saved=""; try{ saved=localStorage.getItem("exoendo.name")||""; }catch(e){}
+  $("nameInput").value=saved; renderWho();
+  $("nameInput").addEventListener("input",()=>{
+    try{ localStorage.setItem("exoendo.name",$("nameInput").value.trim()); }catch(e){}
+    renderWho();
+  });
+})();
 
 reset();
 </script>
