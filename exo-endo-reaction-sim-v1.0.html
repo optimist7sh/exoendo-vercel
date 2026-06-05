@@ -36,6 +36,8 @@
   .namebar .who{font-size:.82rem;font-weight:700;color:var(--muted);flex:none}
 
   .ing button{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+  .ing-img{width:24px;height:24px;border-radius:6px;object-fit:cover;flex:none;
+    border:1px solid #cbd5e1;background:#fff;pointer-events:none}
   .ing button.dragging{opacity:.4;cursor:grabbing}
   .ing button.added{cursor:default;touch-action:auto}
   .drag-ghost{position:fixed;z-index:999;pointer-events:none;transform:translate(-50%,-50%);
@@ -220,7 +222,13 @@ const $=id=>document.getElementById(id);
 const DEVICES={
   warmer:{
     cls:"warm", icon:"🔥",
-    ingredients:[{n:"철 가루",c:"#6b7280"},{n:"숯가루",c:"#1f2937"},{n:"소금",c:"#e5e7eb"},{n:"질석",c:"#b08968"},{n:"물",c:"#7fb8e6"}],
+    ingredients:[
+      {n:"철 가루",c:"#6b7280",img:"images/iron.png"},
+      {n:"숯가루",c:"#1f2937",img:"images/charcoal.png"},
+      {n:"소금",c:"#e5e7eb",img:"images/salt.png"},
+      {n:"질석",c:"#b08968",img:"images/vermiculite.png"},
+      {n:"물",c:"#7fb8e6"}
+    ],
     startTemp:22, endTemp:55, mercColor:"var(--hot)", auraColor:"var(--hot-soft)",
     dir:"out", label:"에너지 방출", labelColor:"var(--hot)",
     eq:"4Fe + 3O₂ → 2Fe₂O₃ (+ 에너지)",
@@ -255,7 +263,11 @@ function buildIngredients(){
   const box=$("ingBox"); box.innerHTML=""; ingBtns=[];
   DEVICES[dev].ingredients.forEach((ing,i)=>{
     const b=document.createElement("button");
-    b.innerHTML=`<span class="dot" style="background:${ing.c}"></span>${ing.n}`;
+    const visual = ing.img
+      ? `<img class="ing-img" src="${ing.img}" alt="${ing.n}" draggable="false"
+           onerror="this.outerHTML='<span class=\\'dot\\' style=\\'background:${ing.c}\\'></span>'">`
+      : `<span class="dot" style="background:${ing.c}"></span>`;
+    b.innerHTML=`${visual}${ing.n}`;
     // 마우스/터치 공통 드래그(Pointer). 탭=바로 넣기, 드래그해서 주머니 위에 놓으면 넣기
     b.addEventListener("pointerdown",e=>{
       if(b.classList.contains("added")) return;
@@ -273,7 +285,7 @@ function addIngredient(i,btn,ing){
   $("bagLabel").setAttribute("opacity",0);
   // 입자/물 표시
   if(ing.n==="물"){ animBagWater(); }
-  else addParticles(ing.c);
+  else addParticles(ing);
   if(added.size===DEVICES[dev].ingredients.length){
     state="ready";
     $("predictBox").classList.add("show");
@@ -282,16 +294,34 @@ function addIngredient(i,btn,ing){
     coach(`재료를 넣는 중… (${added.size}/${DEVICES[dev].ingredients.length})`,"");
   }
 }
-function addParticles(color){
-  const g=$("particles");
+function addParticles(ing){
+  const g=$("particles"), SVG="http://www.w3.org/2000/svg";
+  const color=(typeof ing==="string")?ing:ing.c;
+  const img=(typeof ing==="object")?ing.img:null;
   for(let k=0;k<14;k++){
-    const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
-    c.setAttribute("cx",185+Math.random()*90);
-    c.setAttribute("cy",150+Math.random()*140);
-    c.setAttribute("r",2+Math.random()*2.5);
-    c.setAttribute("fill",color); c.setAttribute("opacity",0.9);
-    if(color==="#ffffff")c.setAttribute("stroke","#cbd5e1");
-    g.appendChild(c);
+    const cx=185+Math.random()*90, cy=150+Math.random()*140;
+    if(img){
+      const sz=10+Math.random()*8;
+      const im=document.createElementNS(SVG,"image");
+      im.setAttributeNS("http://www.w3.org/1999/xlink","href",img); // 구형 호환
+      im.setAttribute("href",img);
+      im.setAttribute("x",cx-sz/2); im.setAttribute("y",cy-sz/2);
+      im.setAttribute("width",sz); im.setAttribute("height",sz);
+      im.setAttribute("preserveAspectRatio","xMidYMid slice");
+      im.setAttribute("opacity",0.95);
+      // 이미지 로드 실패 → 색 원으로 대체
+      im.addEventListener("error",()=>{ const c=document.createElementNS(SVG,"circle");
+        c.setAttribute("cx",cx); c.setAttribute("cy",cy); c.setAttribute("r",3);
+        c.setAttribute("fill",color); g.appendChild(c); im.remove(); });
+      g.appendChild(im);
+    }else{
+      const c=document.createElementNS(SVG,"circle");
+      c.setAttribute("cx",cx); c.setAttribute("cy",cy);
+      c.setAttribute("r",2+Math.random()*2.5);
+      c.setAttribute("fill",color); c.setAttribute("opacity",0.9);
+      if(color==="#ffffff")c.setAttribute("stroke","#cbd5e1");
+      g.appendChild(c);
+    }
   }
 }
 function animBagWater(){
