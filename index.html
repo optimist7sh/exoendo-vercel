@@ -35,7 +35,7 @@
   .namebar input:focus{outline:none;border-color:var(--gold);background:#fff}
   .namebar .who{font-size:.82rem;font-weight:700;color:var(--muted);flex:none}
 
-  .ing button{cursor:grab;touch-action:none}
+  .ing button{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
   .ing button.dragging{opacity:.4;cursor:grabbing}
   .ing button.added{cursor:default;touch-action:auto}
   .drag-ghost{position:fixed;z-index:999;pointer-events:none;transform:translate(-50%,-50%);
@@ -44,7 +44,8 @@
     border-radius:10px;padding:10px 12px;font-weight:700;font-size:.9rem;color:var(--navy)}
   #scene{border-radius:12px;transition:outline-color .1s}
   #scene.drop-hot{outline:3px dashed var(--gold);outline-offset:-6px;background:rgba(200,162,74,.06)}
-  #bag{cursor:pointer}
+  #bag{cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  #scene{-webkit-tap-highlight-color:transparent}
   #bag.clickable .bag-hint{opacity:.9}
   .bag-hint{opacity:0;transition:opacity .2s}
 
