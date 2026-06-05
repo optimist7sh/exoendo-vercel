@@ -35,9 +35,13 @@
   .namebar input:focus{outline:none;border-color:var(--gold);background:#fff}
   .namebar .who{font-size:.82rem;font-weight:700;color:var(--muted);flex:none}
 
-  .ing button[draggable=true]{cursor:grab}
-  .ing button.dragging{opacity:.45;cursor:grabbing}
-  .ing button.added{cursor:default}
+  .ing button{cursor:grab;touch-action:none}
+  .ing button.dragging{opacity:.4;cursor:grabbing}
+  .ing button.added{cursor:default;touch-action:auto}
+  .drag-ghost{position:fixed;z-index:999;pointer-events:none;transform:translate(-50%,-50%);
+    opacity:.92;box-shadow:0 8px 20px rgba(0,0,0,.25);margin:0;white-space:nowrap;
+    display:flex;align-items:center;gap:8px;background:#f4f6fa;border:1.5px solid var(--gold);
+    border-radius:10px;padding:10px 12px;font-weight:700;font-size:.9rem;color:var(--navy)}
   #scene{border-radius:12px;transition:outline-color .1s}
   #scene.drop-hot{outline:3px dashed var(--gold);outline-offset:-6px;background:rgba(200,162,74,.06)}
   #bag{cursor:pointer}
@@ -251,16 +255,12 @@ function buildIngredients(){
   DEVICES[dev].ingredients.forEach((ing,i)=>{
     const b=document.createElement("button");
     b.innerHTML=`<span class="dot" style="background:${ing.c}"></span>${ing.n}`;
-    b.onclick=()=>addIngredient(i,b,ing);
-    // 드래그해서 주머니에 넣기
-    b.setAttribute("draggable","true");
-    b.addEventListener("dragstart",e=>{
-      if(b.classList.contains("added")||(state!=="empty"&&state!=="adding")){ e.preventDefault(); return; }
-      e.dataTransfer.setData("text/plain",String(i));
-      e.dataTransfer.effectAllowed="copy";
-      b.classList.add("dragging");
+    // 마우스/터치 공통 드래그(Pointer). 탭=바로 넣기, 드래그해서 주머니 위에 놓으면 넣기
+    b.addEventListener("pointerdown",e=>{
+      if(b.classList.contains("added")) return;
+      if(state!=="empty"&&state!=="adding") return;
+      e.preventDefault(); startDrag(e,i,b,ing);
     });
-    b.addEventListener("dragend",()=>b.classList.remove("dragging"));
     ingBtns[i]=b;
     box.appendChild(b);
   });
@@ -394,21 +394,50 @@ $("predDown").onclick=()=>setPrediction("down");
 $("btnGo").onclick=react;
 $("btnReset").onclick=reset;
 
-/* 재료 드래그 → 주머니에 넣기 (드롭존 = 장면 전체) */
-(function setupDropZone(){
-  const scene=$("scene");
-  scene.addEventListener("dragover",e=>{
-    if(state!=="empty"&&state!=="adding")return;
-    e.preventDefault(); e.dataTransfer.dropEffect="copy"; scene.classList.add("drop-hot");
-  });
-  scene.addEventListener("dragleave",e=>{ if(e.target===scene)scene.classList.remove("drop-hot"); });
-  scene.addEventListener("drop",e=>{
-    e.preventDefault(); scene.classList.remove("drop-hot");
-    const i=parseInt(e.dataTransfer.getData("text/plain"),10);
-    const ing=DEVICES[dev].ingredients[i], btn=ingBtns[i];
-    if(!isNaN(i)&&ing&&btn) addIngredient(i,btn,ing);
-  });
-})();
+/* 재료 드래그(Pointer) — 마우스/터치 공통. 탭=바로 넣기, 주머니 위에 놓으면 넣기 */
+let drag=null;
+function overScene(x,y){ const r=$("scene").getBoundingClientRect();
+  return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom; }
+function startDrag(e,i,btn,ing){
+  drag={i,btn,ing,sx:e.clientX,sy:e.clientY,moved:false,ghost:null,pid:e.pointerId};
+  try{ btn.setPointerCapture(e.pointerId); }catch(_){}
+  btn.addEventListener("pointermove",onDragMove);
+  btn.addEventListener("pointerup",onDragUp);
+  btn.addEventListener("pointercancel",onDragUp);
+}
+function onDragMove(e){
+  if(!drag)return;
+  const dx=e.clientX-drag.sx, dy=e.clientY-drag.sy;
+  if(!drag.moved && Math.hypot(dx,dy)>6){
+    drag.moved=true;
+    const g=drag.btn.cloneNode(true);
+    g.className="drag-ghost"; drag.ghost=g; document.body.appendChild(g);
+    drag.btn.classList.add("dragging");
+  }
+  if(drag.moved){
+    drag.ghost.style.left=e.clientX+"px"; drag.ghost.style.top=e.clientY+"px";
+    $("scene").classList.toggle("drop-hot",overScene(e.clientX,e.clientY));
+  }
+}
+function onDragUp(e){
+  if(!drag)return;
+  const {i,btn,ing,moved}=drag;
+  const over=overScene(e.clientX,e.clientY);
+  endDrag();
+  if(!moved || over) addIngredient(i,btn,ing); // 탭 또는 주머니 위에 놓음
+}
+function endDrag(){
+  if(!drag)return;
+  const b=drag.btn;
+  if(drag.ghost)drag.ghost.remove();
+  b.classList.remove("dragging");
+  $("scene").classList.remove("drop-hot");
+  b.removeEventListener("pointermove",onDragMove);
+  b.removeEventListener("pointerup",onDragUp);
+  b.removeEventListener("pointercancel",onDragUp);
+  try{ b.releasePointerCapture(drag.pid); }catch(_){}
+  drag=null;
+}
 
 /* 주머니 클릭 → 흔들기(반응) */
 $("bag").addEventListener("click",()=>{
