@@ -86,6 +86,7 @@
   .b-go:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
   .b-reset{background:#fff;color:var(--muted);border:1.5px solid var(--line);border-radius:11px;padding:13px 16px;font-weight:700;cursor:pointer}
   .b-shot{background:#fff;color:var(--navy);border:1.5px solid var(--line);border-radius:11px;padding:13px 16px;font-weight:700;cursor:pointer}
+  .b-seq{flex-basis:100%;background:var(--cold);color:#fff;border:0;border-radius:11px;padding:13px;font-weight:800;font-size:.98rem;cursor:pointer;box-shadow:0 4px 12px rgba(47,135,216,.25)}
 
   .coach{border-radius:12px;padding:13px;background:#f0f5ff;border:1px solid #cdddff;margin-bottom:12px}
   .coach .msg{font-size:.92rem;font-weight:600}
@@ -158,12 +159,20 @@
           <rect id="bagWater" x="172" y="300" width="116" height="0" fill="#bcdcf6" clip-path="url(#bagClip)" opacity="0.85"/>
           <!-- 재료 입자 -->
           <g id="particles" clip-path="url(#bagClip)"></g>
-          <!-- 흡열용: 물 담는 작은 속 지퍼백 (큰 백엔 질산암모늄) -->
-          <g id="innerBag" opacity="0" clip-path="url(#bagClip)">
-            <rect x="199" y="151" width="62" height="58" rx="10" fill="#bcdcf6" opacity="0.8" stroke="#7fb8e6" stroke-width="1.5"/>
-            <rect x="199" y="148" width="62" height="7" rx="3" fill="#9cc6ea"/>
+          <!-- 흡열용: 물 담는 작은 지퍼백 (시작은 위에 떠 있다가 큰 백 안으로 넣어짐) -->
+          <clipPath id="innerClip"><rect x="201" y="153" width="58" height="54" rx="9"/></clipPath>
+          <g id="innerBag" opacity="0" transform="translate(0,-96)">
+            <rect x="199" y="151" width="62" height="58" rx="10" fill="#eaf4ff" opacity="0.92" stroke="#7fb8e6" stroke-width="1.5"/>
+            <rect id="innerWater" x="201" y="207" width="58" height="0" fill="#7fb8e6" clip-path="url(#innerClip)" opacity="0.85"/>
             <g id="innerGrains"></g>
+            <rect x="199" y="148" width="62" height="7" rx="3" fill="#9cc6ea"/>
             <text x="230" y="223" text-anchor="middle" font-size="8.5" font-weight="800" fill="#2b6cb0">물 지퍼백</text>
+          </g>
+          <!-- 열봉합기 + 밀봉선 -->
+          <rect id="sealLine" x="174" y="103" width="112" height="6" rx="3" fill="var(--hot)" opacity="0"/>
+          <g id="sealer" opacity="0">
+            <rect x="150" y="84" width="36" height="17" rx="4" fill="#7c8597"/>
+            <text x="168" y="97" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">🔥</text>
           </g>
           <text id="bagLabel" x="230" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa3b2">여기로 재료를 드래그</text>
           <text id="bagHint" class="bag-hint" x="230" y="285" text-anchor="middle" font-size="11" font-weight="800" fill="var(--navy)">👆 주머니를 클릭해 흔들기</text>
@@ -208,6 +217,7 @@
       </div>
 
       <div class="acts">
+        <button class="b-seq" id="btnSeq" style="display:none"></button>
         <button class="b-go" id="btnGo" disabled>주머니 흔들기</button>
         <button class="b-shot" id="btnShot">📸 스크린샷</button>
         <button class="b-reset" id="btnReset">↺ 다시</button>
@@ -262,6 +272,7 @@ const DEVICES={
 };
 
 let dev="warmer", added=new Set(), prediction=null, state="empty", raf=null, ingBtns=[];
+let coolerStep=0; // 흡열 가이드 단계: 0물→1질산암모늄→2넣기→3밀봉→4준비
 
 /* 온도→y (눈금 60→y100, 20→y196 기준; 80도 범위 / 0.96px·도... 직접 보간) */
 function thermoY(t){ // 60℃=100, 0℃=244  → 2.4px/도
@@ -288,13 +299,13 @@ function buildIngredients(){
   });
 }
 function addIngredient(i,btn,ing){
+  if(dev==="cooler"){ coolerAdd(i,btn,ing); return; } // 흡열은 단계 가이드
   if(state!=="empty"&&state!=="adding")return;
   if(added.has(i))return;
   added.add(i); state="adding"; btn.classList.add("added");
   $("bagLabel").setAttribute("opacity",0);
   // 입자/물 표시
-  if(ing.n==="물"){ if(dev==="cooler") showWaterBag(); else animBagWater(); }
-  else if(ing.n==="질산 암모늄"){ fillOuterAmmonium(ing); }
+  if(ing.n==="물"){ animBagWater(); }
   else addParticles(ing);
   if(added.size===DEVICES[dev].ingredients.length){
     state="ready";
@@ -304,6 +315,58 @@ function addIngredient(i,btn,ing){
     coach(`재료를 넣는 중… (${added.size}/${DEVICES[dev].ingredients.length})`,"");
   }
 }
+/* ===== 흡열(손냉장고) 5단계 가이드 ===== */
+function coolerAdd(i,btn,ing){
+  if(added.has(i))return;
+  if(coolerStep===0){
+    if(ing.n!=="물"){ coach("먼저 <b>작은 지퍼백에 물</b>을 드래그해 넣으세요.","warn"); return; }
+    added.add(i); state="adding"; btn.classList.add("added");
+    $("bagLabel").setAttribute("opacity",0);
+    fillWaterBag50(); coolerStep=1;
+    coach("좋아요! 이제 <b>질산암모늄</b>을 큰 지퍼백에 드래그하세요. (약 20%)","good");
+  } else if(coolerStep===1){
+    if(ing.n!=="질산 암모늄"){ coach("이제 <b>질산암모늄</b>을 큰 지퍼백에 넣으세요.","warn"); return; }
+    added.add(i); btn.classList.add("added");
+    fillOuterAmmonium(ing); coolerStep=2;
+    showSeqBtn("⬇️ 물 지퍼백을 큰 지퍼백에 넣기");
+    coach("물이 든 <b>작은 지퍼백</b>을 큰 지퍼백 안에 넣으세요. 아래 버튼을 누르세요.","good");
+  } else {
+    coach("순서대로 진행 중! 아래 <b>파란 버튼</b>으로 다음 단계로 가세요.","");
+  }
+}
+function fillWaterBag50(){ // 작은 지퍼백 물 50% 채우기
+  $("innerBag").setAttribute("opacity",1);
+  const w=$("innerWater"), H=27, baseY=207, start=performance.now();
+  (function st(now){ const k=Math.min((now-start)/700,1);
+    w.setAttribute("height",(H*k).toFixed(1)); w.setAttribute("y",(baseY-H*k).toFixed(1));
+    if(k<1)requestAnimationFrame(st);
+  })(performance.now());
+}
+function insertBag(){ // 작은 지퍼백을 큰 지퍼백 안으로 내려넣기
+  const g=$("innerBag"), start=performance.now();
+  (function st(now){ const k=Math.min((now-start)/750,1);
+    g.setAttribute("transform","translate(0,"+(-96*(1-k)).toFixed(1)+")");
+    if(k<1)requestAnimationFrame(st);
+    else { coolerStep=3; showSeqBtn("🔥 열봉합기로 지퍼 밀봉"); coach("이제 <b>열봉합기로 밀봉</b>하세요. 아래 버튼을 누르세요.","good"); }
+  })(performance.now());
+}
+function sealBag(){ // 열봉합기 슬라이드 + 밀봉선
+  const sealer=$("sealer"), line=$("sealLine"); sealer.setAttribute("opacity",1);
+  const start=performance.now();
+  (function st(now){ const k=Math.min((now-start)/900,1);
+    sealer.setAttribute("transform","translate("+(120*k).toFixed(1)+",0)");
+    line.setAttribute("opacity",k.toFixed(2));
+    if(k<1)requestAnimationFrame(st);
+    else { sealer.setAttribute("opacity",0); coolerStep=4; afterSeal(); }
+  })(performance.now());
+}
+function afterSeal(){
+  hideSeqBtn(); state="ready";
+  $("predictBox").classList.add("show");
+  coach("밀봉 완료! <b>온도 변화를 예측</b>한 뒤, <b>주머니를 흔들어(클릭)</b> 물 지퍼백을 터뜨리세요.","good");
+}
+function showSeqBtn(label){ $("btnSeq").textContent=label; $("btnSeq").style.display=""; }
+function hideSeqBtn(){ $("btnSeq").style.display="none"; }
 function addParticles(ing){
   const g=$("particles"), SVG="http://www.w3.org/2000/svg";
   const color=(typeof ing==="string")?ing:ing.c; // 주머니 입자는 항상 원형(색)
@@ -343,6 +406,7 @@ function fillOuterAmmonium(ing){ // 질산암모늄: 큰 바깥 백 바닥에 ~2
 function burstInnerBag(){ // 흔들면 물 지퍼백 터져 → 물이 차오르며 질산암모늄과 섞임
   if($("innerBag").getAttribute("opacity")==="0")return;
   $("innerBag").setAttribute("opacity",0); $("innerGrains").innerHTML="";
+  $("innerWater").setAttribute("height",0);
   animBagWater();
 }
 function animBagWater(){
@@ -419,7 +483,12 @@ function reset(){
   added=new Set(); prediction=null; state="empty";
   const D=DEVICES[dev];
   $("particles").innerHTML=""; $("bagWater").setAttribute("height",0);
-  $("innerBag").setAttribute("opacity",0); $("innerGrains").innerHTML="";
+  $("innerGrains").innerHTML=""; $("innerWater").setAttribute("height",0);
+  $("innerBag").setAttribute("transform","translate(0,-96)");
+  $("sealer").setAttribute("opacity",0); $("sealLine").setAttribute("opacity",0);
+  hideSeqBtn(); coolerStep=0;
+  // 흡열: 빈 작은 지퍼백을 위에 띄워 보여줌 / 발열: 숨김
+  $("innerBag").setAttribute("opacity", dev==="cooler"?1:0);
   $("bagLabel").setAttribute("opacity",1);
   $("bag").classList.remove("shaking","clickable");
   $("arrows").setAttribute("opacity",0); $("aura").setAttribute("opacity",0);
@@ -432,7 +501,10 @@ function reset(){
   $("result").className="result"; $("btnGo").disabled=true;
   $("safety").innerHTML=D.safety;
   buildIngredients();
-  coach("재료를 <b>주머니로 드래그</b>해 넣어 보세요.","");
+  if(dev==="cooler")
+    coach("① 작은 지퍼백에 <b>물</b>을 드래그해 넣으세요. (50% 채움)","");
+  else
+    coach("재료를 <b>주머니로 드래그</b>해 넣어 보세요.","");
 }
 
 /* 탭 */
@@ -447,6 +519,7 @@ $("predUp").onclick=()=>setPrediction("up");
 $("predDown").onclick=()=>setPrediction("down");
 $("btnGo").onclick=react;
 $("btnReset").onclick=reset;
+$("btnSeq").onclick=()=>{ if(coolerStep===2)insertBag(); else if(coolerStep===3)sealBag(); };
 
 /* 스크린샷 — 장치 SVG를 PNG로 저장 (CSS 변수 인라인해 색 유지) */
 function screenshotScene(){
