@@ -308,9 +308,9 @@ function addIngredient(i,btn,ing){
   if(ing.n==="물"){ animBagWater(); }
   else addParticles(ing);
   if(added.size===DEVICES[dev].ingredients.length){
-    state="ready";
-    $("predictBox").classList.add("show");
-    coach("재료를 다 넣었어요! 먼저 <b>온도 변화를 예측</b>한 뒤 <b>주머니를 클릭</b>해 흔들어요.","");
+    state="sealing";
+    showSeqBtn("🔥 열봉합기로 밀봉");
+    coach("재료를 다 넣었어요! 이제 <b>열봉합기로 밀봉</b>하세요.","good");
   }else{
     coach(`재료를 넣는 중… (${added.size}/${DEVICES[dev].ingredients.length})`,"");
   }
@@ -363,7 +363,10 @@ function sealBag(){ // 열봉합기 슬라이드 + 밀봉선
 function afterSeal(){
   hideSeqBtn(); state="ready";
   $("predictBox").classList.add("show");
-  coach("밀봉 완료! <b>온도 변화를 예측</b>한 뒤, <b>주머니를 흔들어(클릭)</b> 물 지퍼백을 터뜨리세요.","good");
+  if(dev==="cooler")
+    coach("밀봉 완료! <b>온도 변화를 예측</b>한 뒤, <b>주머니를 흔들어(클릭)</b> 물 지퍼백을 터뜨리세요.","good");
+  else
+    coach("밀봉 완료! <b>온도 변화를 예측</b>한 뒤, <b>주머니를 흔들어(클릭)</b> 반응시키세요.","good");
 }
 function showSeqBtn(label){ $("btnSeq").textContent=label; $("btnSeq").style.display=""; }
 function hideSeqBtn(){ $("btnSeq").style.display="none"; }
@@ -519,7 +522,10 @@ $("predUp").onclick=()=>setPrediction("up");
 $("predDown").onclick=()=>setPrediction("down");
 $("btnGo").onclick=react;
 $("btnReset").onclick=reset;
-$("btnSeq").onclick=()=>{ if(coolerStep===2)insertBag(); else if(coolerStep===3)sealBag(); };
+$("btnSeq").onclick=()=>{
+  if(dev==="cooler"){ if(coolerStep===2)insertBag(); else if(coolerStep===3)sealBag(); }
+  else sealBag(); // 발열: 바로 밀봉
+};
 
 /* 스크린샷 — 장치 SVG를 PNG로 저장 (CSS 변수 인라인해 색 유지) */
 function screenshotScene(){
