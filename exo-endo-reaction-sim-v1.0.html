@@ -157,6 +157,13 @@
           <rect id="bagWater" x="172" y="300" width="116" height="0" fill="#bcdcf6" clip-path="url(#bagClip)" opacity="0.85"/>
           <!-- 재료 입자 -->
           <g id="particles" clip-path="url(#bagClip)"></g>
+          <!-- 흡열용: 질산암모늄 담는 작은 속봉지 (아이스팩 원리) -->
+          <g id="innerBag" opacity="0" clip-path="url(#bagClip)">
+            <rect x="199" y="151" width="62" height="58" rx="10" fill="#ffffff" opacity="0.55" stroke="#9aa3b2" stroke-width="1.5"/>
+            <rect x="199" y="148" width="62" height="7" rx="3" fill="#cbd5e1"/>
+            <g id="innerGrains"></g>
+            <text x="230" y="223" text-anchor="middle" font-size="8.5" font-weight="800" fill="#64748b">질산암모늄 봉지</text>
+          </g>
           <text id="bagLabel" x="230" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa3b2">여기로 재료를 드래그</text>
           <text id="bagHint" class="bag-hint" x="230" y="285" text-anchor="middle" font-size="11" font-weight="800" fill="var(--navy)">👆 주머니를 클릭해 흔들기</text>
         </g>
@@ -285,6 +292,7 @@ function addIngredient(i,btn,ing){
   $("bagLabel").setAttribute("opacity",0);
   // 입자/물 표시
   if(ing.n==="물"){ animBagWater(); }
+  else if(ing.n==="질산 암모늄"){ showInnerBag(ing); }
   else addParticles(ing);
   if(added.size===DEVICES[dev].ingredients.length){
     state="ready";
@@ -306,6 +314,24 @@ function addParticles(ing){
     if(color==="#e5e7eb"||color==="#ffffff")c.setAttribute("stroke","#cbd5e1");
     g.appendChild(c);
   }
+}
+function showInnerBag(ing){
+  const g=$("innerGrains"), SVG="http://www.w3.org/2000/svg"; g.innerHTML="";
+  for(let k=0;k<12;k++){
+    const c=document.createElementNS(SVG,"circle");
+    c.setAttribute("cx",207+Math.random()*46);
+    c.setAttribute("cy",160+Math.random()*40);
+    c.setAttribute("r",2+Math.random()*1.6);
+    c.setAttribute("fill",ing.c); c.setAttribute("stroke","#cbd5e1"); c.setAttribute("stroke-width",0.5);
+    g.appendChild(c);
+  }
+  $("innerBag").setAttribute("opacity",1);
+}
+function burstInnerBag(){
+  if($("innerBag").getAttribute("opacity")==="0")return;
+  $("innerBag").setAttribute("opacity",0); $("innerGrains").innerHTML="";
+  const ing=DEVICES.cooler.ingredients.find(x=>x.n==="질산 암모늄"); // 터져서 물에 섞임
+  if(ing) addParticles(ing);
 }
 function animBagWater(){
   const w=$("bagWater"); const targetH=120, top=300-targetH;
@@ -334,6 +360,7 @@ function react(){
   const D=DEVICES[dev];
   $("bag").classList.remove("clickable");
   $("bag").classList.add("shaking");
+  if(dev==="cooler") burstInnerBag(); // 속봉지 터져 물과 반응
   // 화살표/오라 설정
   $("merc").setAttribute("fill",D.mercColor);
   document.querySelector("#thermo circle:last-of-type")?.setAttribute("fill",D.mercColor);
@@ -380,6 +407,7 @@ function reset(){
   added=new Set(); prediction=null; state="empty";
   const D=DEVICES[dev];
   $("particles").innerHTML=""; $("bagWater").setAttribute("height",0);
+  $("innerBag").setAttribute("opacity",0); $("innerGrains").innerHTML="";
   $("bagLabel").setAttribute("opacity",1);
   $("bag").classList.remove("shaking","clickable");
   $("arrows").setAttribute("opacity",0); $("aura").setAttribute("opacity",0);
