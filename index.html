@@ -85,6 +85,7 @@
   .b-go{flex:1;background:var(--navy);color:#fff;border:0;border-radius:11px;padding:13px;font-weight:800;font-size:.98rem;cursor:pointer;box-shadow:0 4px 12px rgba(27,42,74,.22)}
   .b-go:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
   .b-reset{background:#fff;color:var(--muted);border:1.5px solid var(--line);border-radius:11px;padding:13px 16px;font-weight:700;cursor:pointer}
+  .b-shot{background:#fff;color:var(--navy);border:1.5px solid var(--line);border-radius:11px;padding:13px 16px;font-weight:700;cursor:pointer}
 
   .coach{border-radius:12px;padding:13px;background:#f0f5ff;border:1px solid #cdddff;margin-bottom:12px}
   .coach .msg{font-size:.92rem;font-weight:600}
@@ -157,12 +158,12 @@
           <rect id="bagWater" x="172" y="300" width="116" height="0" fill="#bcdcf6" clip-path="url(#bagClip)" opacity="0.85"/>
           <!-- 재료 입자 -->
           <g id="particles" clip-path="url(#bagClip)"></g>
-          <!-- 흡열용: 질산암모늄 담는 작은 속봉지 (아이스팩 원리) -->
+          <!-- 흡열용: 물 담는 작은 속 지퍼백 (큰 백엔 질산암모늄) -->
           <g id="innerBag" opacity="0" clip-path="url(#bagClip)">
-            <rect x="199" y="151" width="62" height="58" rx="10" fill="#ffffff" opacity="0.55" stroke="#9aa3b2" stroke-width="1.5"/>
-            <rect x="199" y="148" width="62" height="7" rx="3" fill="#cbd5e1"/>
+            <rect x="199" y="151" width="62" height="58" rx="10" fill="#bcdcf6" opacity="0.8" stroke="#7fb8e6" stroke-width="1.5"/>
+            <rect x="199" y="148" width="62" height="7" rx="3" fill="#9cc6ea"/>
             <g id="innerGrains"></g>
-            <text x="230" y="223" text-anchor="middle" font-size="8.5" font-weight="800" fill="#64748b">질산암모늄 봉지</text>
+            <text x="230" y="223" text-anchor="middle" font-size="8.5" font-weight="800" fill="#2b6cb0">물 지퍼백</text>
           </g>
           <text id="bagLabel" x="230" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#9aa3b2">여기로 재료를 드래그</text>
           <text id="bagHint" class="bag-hint" x="230" y="285" text-anchor="middle" font-size="11" font-weight="800" fill="var(--navy)">👆 주머니를 클릭해 흔들기</text>
@@ -208,6 +209,7 @@
 
       <div class="acts">
         <button class="b-go" id="btnGo" disabled>주머니 흔들기</button>
+        <button class="b-shot" id="btnShot">📸 스크린샷</button>
         <button class="b-reset" id="btnReset">↺ 다시</button>
       </div>
 
@@ -291,8 +293,8 @@ function addIngredient(i,btn,ing){
   added.add(i); state="adding"; btn.classList.add("added");
   $("bagLabel").setAttribute("opacity",0);
   // 입자/물 표시
-  if(ing.n==="물"){ animBagWater(); }
-  else if(ing.n==="질산 암모늄"){ showInnerBag(ing); }
+  if(ing.n==="물"){ if(dev==="cooler") showWaterBag(); else animBagWater(); }
+  else if(ing.n==="질산 암모늄"){ fillOuterAmmonium(ing); }
   else addParticles(ing);
   if(added.size===DEVICES[dev].ingredients.length){
     state="ready";
@@ -315,23 +317,33 @@ function addParticles(ing){
     g.appendChild(c);
   }
 }
-function showInnerBag(ing){
+function showWaterBag(){ // 물: 작은 속 지퍼백
   const g=$("innerGrains"), SVG="http://www.w3.org/2000/svg"; g.innerHTML="";
-  for(let k=0;k<12;k++){
+  for(let k=0;k<5;k++){
     const c=document.createElementNS(SVG,"circle");
-    c.setAttribute("cx",207+Math.random()*46);
-    c.setAttribute("cy",160+Math.random()*40);
-    c.setAttribute("r",2+Math.random()*1.6);
-    c.setAttribute("fill",ing.c); c.setAttribute("stroke","#cbd5e1"); c.setAttribute("stroke-width",0.5);
+    c.setAttribute("cx",210+Math.random()*40);
+    c.setAttribute("cy",162+Math.random()*36);
+    c.setAttribute("r",2+Math.random()*2);
+    c.setAttribute("fill","#eaf6ff"); c.setAttribute("opacity",0.85);
     g.appendChild(c);
   }
   $("innerBag").setAttribute("opacity",1);
 }
-function burstInnerBag(){
+function fillOuterAmmonium(ing){ // 질산암모늄: 큰 바깥 백 바닥에 ~20%
+  const g=$("particles"), SVG="http://www.w3.org/2000/svg";
+  for(let k=0;k<26;k++){
+    const c=document.createElementNS(SVG,"circle");
+    c.setAttribute("cx",180+Math.random()*100);
+    c.setAttribute("cy",262+Math.random()*34);   // 바닥 약 20%
+    c.setAttribute("r",2+Math.random()*1.8);
+    c.setAttribute("fill",ing.c); c.setAttribute("stroke","#cbd5e1"); c.setAttribute("stroke-width",0.5);
+    g.appendChild(c);
+  }
+}
+function burstInnerBag(){ // 흔들면 물 지퍼백 터져 → 물이 차오르며 질산암모늄과 섞임
   if($("innerBag").getAttribute("opacity")==="0")return;
   $("innerBag").setAttribute("opacity",0); $("innerGrains").innerHTML="";
-  const ing=DEVICES.cooler.ingredients.find(x=>x.n==="질산 암모늄"); // 터져서 물에 섞임
-  if(ing) addParticles(ing);
+  animBagWater();
 }
 function animBagWater(){
   const w=$("bagWater"); const targetH=120, top=300-targetH;
@@ -435,6 +447,33 @@ $("predUp").onclick=()=>setPrediction("up");
 $("predDown").onclick=()=>setPrediction("down");
 $("btnGo").onclick=react;
 $("btnReset").onclick=reset;
+
+/* 스크린샷 — 장치 SVG를 PNG로 저장 (CSS 변수 인라인해 색 유지) */
+function screenshotScene(){
+  const svg=$("scene"), vb=svg.viewBox.baseVal, W=vb.width||400, H=vb.height||380;
+  const clone=svg.cloneNode(true);
+  clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  clone.setAttribute("width",W); clone.setAttribute("height",H);
+  const rs=getComputedStyle(document.documentElement);
+  const vars=["--navy","--navy-2","--ink","--muted","--gold","--gold-soft","--hot","--hot-soft","--cold","--cold-soft","--bg","--card","--line","--good","--warn"];
+  const css=":root{"+vars.map(v=>v+":"+rs.getPropertyValue(v).trim()).join(";")+"}";
+  const st=document.createElementNS("http://www.w3.org/2000/svg","style"); st.textContent=css;
+  clone.insertBefore(st,clone.firstChild);
+  const xml=new XMLSerializer().serializeToString(clone);
+  const url="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(xml)));
+  const img=new Image();
+  img.onload=()=>{
+    const scale=2, cv=document.createElement("canvas"); cv.width=W*scale; cv.height=H*scale;
+    const ctx=cv.getContext("2d"); ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.drawImage(img,0,0,cv.width,cv.height);
+    const a=document.createElement("a");
+    a.download=(($("nameInput").value.trim()||"실험")+"_"+(dev==="warmer"?"손난로":"손냉장고")+".png");
+    a.href=cv.toDataURL("image/png"); a.click();
+  };
+  img.onerror=()=>coach("스크린샷 생성 실패. 다시 시도해 주세요.","warn");
+  img.src=url;
+}
+$("btnShot").onclick=screenshotScene;
 
 /* 재료 드래그(Pointer) — 마우스/터치 공통. 탭=바로 넣기, 주머니 위에 놓으면 넣기 */
 let drag=null;
